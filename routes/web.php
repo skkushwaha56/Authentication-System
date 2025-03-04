@@ -9,4 +9,4 @@ Route::get('/', function () {
 
 Route::view('login','login');
 Route::view('registration','registration');
-Route::view('dashboard','dashboard');
+Route::view('dashboard','dashboard')
