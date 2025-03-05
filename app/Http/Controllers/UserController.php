@@ -9,49 +9,87 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    //
-    public function register(){
+    public function register()
+    {
         return view('registration');
     }
 
-    public function store(Request $request){
-
-        $validate = $request->validate([
-            'name' =>  'required | string',
-            'email' => 'required | string',
-            'password' => 'required|string'
-            
-        ]);
-
-        User::created([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'password' => Hash::make($request->input('password'))
-        ]);
-    }
-
-    public function get($id){
-        $data = User::find($id);
-    }
-
-    public function update(request $request, $id){
-        $request->validate([
-            'name' => 'required|string|unique:users,name,' . $id,
-            'email' => 'required|string',
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|string|email|unique:users,email',
             'password' => 'required|string',
         ]);
 
-        $user = user::findOrFail($id);
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
+        User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
+
+        return redirect()->route('login.page')->with('success', 'User registered successfully');
     }
 
-    public function destroy($id){
+    public function get($id)
+    {
+        $data = User::find($id);
+        
+        if (!$data) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        
+        return response()->json($data);
+    }
+
+    public function edit($id)
+    {
+        $user = User::findOrFail($id);
+        return view('edit-registration', compact('user'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|unique:users,name,' . $id,
+            'email' => 'required|string|email|unique:users,email,' . $id,
+            'password' => 'nullable|string',
+        ]);
+
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => isset($validated['password']) ? Hash::make($validated['password']) : $user->password,
+        ]);
+
+        return redirect()->route('registration')->with('success', 'User updated successfully');
+    }
+
+    public function destroy($id)
+    {
         $user = User::find($id);
 
+        if (!$user) {
+            return redirect()->route('registration')->with('error', 'User not found');
+        }
+
         $user->delete();
+
+        return redirect()->route('registration')->with('success', 'User deleted successfully');
+    }
+
+    public function login(Request $request){
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
+        if (User::attempt($credentials)){
+            return redirect()->route('dashboard');
+        }
+
+        return back()->withErrors(['email' => 'invalid credenrials']);
     }
 }
